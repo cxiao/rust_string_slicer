@@ -1,10 +1,10 @@
-from binaryninja.binaryview import BinaryView, DataVariable
-from binaryninja.log import Logger
-from binaryninja.types import IntegerType, PointerType
-
 from dataclasses import dataclass
 from pprint import pformat
 from typing import List, Optional
+
+from binaryninja.binaryview import BinaryView, DataVariable
+from binaryninja.log import Logger
+from binaryninja.types import IntegerType, PointerType
 
 logger = Logger(session_id=0, logger_name="rust_string_slicer")
 
