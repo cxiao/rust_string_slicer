@@ -3,8 +3,16 @@ from pprint import pformat
 from typing import List, Optional
 
 from binaryninja.binaryview import BinaryView, DataVariable
+from binaryninja.enums import MediumLevelILOperation
 from binaryninja.log import Logger
-from binaryninja.types import IntegerType, PointerType, StructureBuilder, Type
+from binaryninja.mediumlevelil import MediumLevelILConst
+from binaryninja.types import (
+    ArrayType,
+    IntegerType,
+    PointerType,
+    StructureBuilder,
+    Type,
+)
 
 logger = Logger(session_id=0, logger_name=__name__)
 
@@ -19,7 +27,9 @@ class RustStringSlice:
         return f"StringSlice(address={self.address:#x}, length={self.length:#x}, data={self.data})"
 
     @classmethod
-    def create_binary_ninja_type(cls, bv: BinaryView):
+    def create_binary_ninja_type(
+        cls, bv: BinaryView
+    ):  # TODO: check for existence of type
         if bv.arch is not None:
             rust_string_slice_bn_type_obj = StructureBuilder.create(packed=True)
             rust_string_slice_bn_type_obj.append(
@@ -167,6 +177,111 @@ def recover_string_slices_from_readonly_data(
             continue
 
     return recovered_string_slices
+
+
+def recover_string_slices_from_code(bv: BinaryView) -> Optional[List[RustStringSlice]]:
+    # char const data_14003ca50[0x27] = "{size limit reached}SizeLimitExhausted", 0
+    # ->
+    # 0 @ 14002c910  (MLIL_SET_VAR rcx_1 = (MLIL_VAR rdx))
+    # 1 @ 14002c913  (MLIL_SET_VAR rdx_1 = (MLIL_CONST_PTR "SizeLimitExhausted"))
+    # 2 @ 14002c91a  (MLIL_SET_VAR r8 = (MLIL_CONST 0x12))
+    # 3 @ 14002c920  (MLIL_TAILCALL return (MLIL_CONST_PTR core::fmt::Formatter::write_str)() __tailcall)
+    #
+    # ->
+    # 61 @ 14002c89b  (MLIL_SET_VAR rdx_4 = (MLIL_CONST_PTR "{size limit reached}SizeLimitExhausted"))
+    # 62 @ 14002c8a2  (MLIL_SET_VAR r8_2 = (MLIL_CONST 0x14))
+    # 63 @ 14002c8a8  (MLIL_SET_VAR rcx_5 = (MLIL_VAR rsi))
+    # 64 @ 14002c8ab  (MLIL_CALL rax_2 = (MLIL_CONST_PTR core::fmt::Formatter::write_str)())
+    # 65 @ 14002c8b2  (MLIL_IF if ((MLIL_CMP_NE (MLIL_VAR rax_2) != (MLIL_CONST 0))) then 59 @ 0x14002c8ba else 72 @ 0x14002c8b4)
+
+    # 14003ca00  char const data_14003ca00[0x38] = "`fmt::Error` from `SizeLimitedFmtAdapter` was discarded", 0
+    # ->
+    # 66 @ 14002c8e5  (MLIL_SET_VAR var_b8 = (MLIL_CONST_PTR &str_"C:\Users\runneradmi...01f\rustc-demangle-0.1.21\src\lib.rs"))
+    # 67 @ 14002c8ea  (MLIL_SET_VAR rcx_7 = (MLIL_CONST_PTR "`fmt::Error` from `SizeLimitedFmtAdapter` was discarded"))
+    # 68 @ 14002c8f1  (MLIL_SET_VAR r9 = (MLIL_CONST_PTR &data_14003c198))
+    # 69 @ 14002c8fd  (MLIL_SET_VAR rdx_6 = (MLIL_CONST 0x37))
+    # 70 @ 14002c902  (MLIL_CALL (MLIL_CONST_PTR _ZN4core6result13unwrap_failed17h45a312f1aaedd5feE)())
+    # 71 @ 14002c902  (MLIL_NORET noreturn)
+
+    if bv.arch is None:
+        logger.log_error("Could not get architecture of current binary view, exiting")
+        return None
+
+    readonly_segments = list(
+        filter(
+            lambda segment: segment.readable
+            and not segment.writable
+            and not segment.executable,
+            bv.segments,
+        )
+    )
+    if len(readonly_segments) == 0:
+        logger.log_error("Could not find any read-only segment in binary, exiting")
+        return None
+
+    # TODO: Since the xref from data method is more reliable, we probably want to always do that as the first pass
+    # track which ones didn't work after that first pass, and only do the ones that didn't work after the first pass here
+
+    # Obtain all data vars which are themselves already identified char arays, in readonly data segments.
+    # TODO: what about non-ascii strings? will binja type them to char arrays in its initial autoanalysis?
+    char_array_data_vars_in_ro_segment: List[DataVariable] = []
+    for _data_var_addr, candidate_string_slice_data in bv.data_vars.items():
+        if isinstance(candidate_string_slice_data.type, ArrayType):
+            for readonly_segment in readonly_segments:
+                if candidate_string_slice_data.address in readonly_segment:
+                    char_array_data_vars_in_ro_segment.append(
+                        candidate_string_slice_data
+                    )
+                    logger.log_debug(
+                        f"Found char array var at {candidate_string_slice_data.address:#x} ({candidate_string_slice_data}) with value {candidate_string_slice_data.value} "
+                    )
+
+    # Find cross-references to those data vars, from code.
+    for data_var in char_array_data_vars_in_ro_segment:
+        code_refs = bv.get_code_refs(data_var.address)
+        for code_ref in code_refs:
+            if code_ref.mlil is not None:
+                logger.log_info(f"{code_ref.address:#x}: {code_ref.mlil.instr}")
+
+                # Obtain more information about the instruction at the cross reference.
+                # Is the pointer being read, or written to?
+                # Is the other operand a register, or a memory location?
+                if code_ref.mlil.instr.operation in (
+                    MediumLevelILOperation.MLIL_SET_VAR,
+                    MediumLevelILOperation.MLIL_SET_VAR_FIELD,
+                ):
+                    # Data pointer is being written to a var; look for a write of a constant to a var, for the length.
+                    # Note that it may not be the next instruction!
+                    # Filter so that we only look after the cross-referenced instruction, but still within the same basic block.
+                    for instruction in filter(
+                        lambda instr: instr.instr_index > code_ref.mlil.instr_index,
+                        code_ref.mlil.il_basic_block,
+                    ):
+                        logger.log_info(
+                            f"instruction: {instruction.instr_index}, {instruction}"
+                        )
+                        for detailed_operand in instruction.detailed_operands:
+                            if detailed_operand[0] == "src" and isinstance(
+                                detailed_operand[1], MediumLevelILConst
+                            ):
+                                candidate_string_slice_data = data_var.value
+                                candidate_string_slice_length = detailed_operand[
+                                    1
+                                ].value.value
+                                logger.log_info(
+                                    f"Reference to data var at {data_var.address:#x} with value {candidate_string_slice_data} is followed by store of integer with value {candidate_string_slice_length}"
+                                )
+                                logger.log_info(
+                                    f"Candidate string: {candidate_string_slice_data[:candidate_string_slice_length]}"
+                                )
+
+
+def action_recover_string_slices_from_code(bv: BinaryView):
+    RustStringSlice.create_binary_ninja_type(bv)
+    bv.begin_undo_actions()
+    logger.log_info(pformat(recover_string_slices_from_code(bv)))
+    bv.commit_undo_actions()
+    bv.update_analysis()
 
 
 def action_recover_string_slices_from_readonly_data(bv: BinaryView):

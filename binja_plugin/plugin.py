@@ -12,7 +12,12 @@ plugin_commands = [
         f"{PLUGIN_NAME}\\Recover String Slices from Readonly Data",
         "Recover String Slices from Readonly Data",
         actions.action_recover_string_slices_from_readonly_data,
-    )
+    ),
+    (
+        f"{PLUGIN_NAME}\\Recover String Slices from Code",
+        "Recover String Slices from Code",
+        actions.action_recover_string_slices_from_code,
+    ),
 ]
 
 
