@@ -1,5 +1,39 @@
 # Rust String Slicer
 
+A Binary Ninja plugin to help find the addresses and lengths of strings in Rust binaries.
+
+![A screenshot of Binary Ninja with several structs of type "RustStringSlice" defined, each of which contains the address and length of a string.](images/sliced-string-screenshot-border.png)
+
+## How does this work?
+
+The original motivation for this plugin was to recreate the string slicing functionality in the tech preview of the [official IDA Rust Analysis Plugin from Hex-Rays](https://hex-rays.com/blog/rust-analysis-plugin-tech-preview/). That plugin is able to find the lengths of Rust strings, which are not null terminated, via some heuristics for finding the string length data.
+
+The heuristics we use are the following:
+
+- Enumerate all addresses in the binary's read-only data section which have cross-references.
+- Treating each of those addresses as the beginning of a potential string literal.
+- Follow those cross references to see if there is some information around the site of that cross reference about string length.
+
+For cross references which point to a data section, try to interpret the cross referenced address as a structure like the following, with some heuristics to determine whether the found length_of_string_literal is reasonable:
+
+```
+QWORD address_of_candidate_string_literal
+QWORD length_of_string_literal
+```
+
+![](images/readonly-data-string-slices-border.png)
+
+For cross references which point to a code section, check to see if the subsequent instructions contain a move of an immediate value to a memory location; the immediate value is then taken as the string length. For example, for x64 binaries, look for instructions like this:
+
+```
+lea rax, <address_of_candidate_string_literal>
+mov [rsp+<string_var>.<string_pointer_field>], rax
+mov [rsp+<string_var>.<string_length_field>], 15
+```
+
+![](images/code-string-slices-border.png)
+
+
 ## Development
 
 ### Setting up a development environment
