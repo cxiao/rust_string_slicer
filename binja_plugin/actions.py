@@ -275,6 +275,14 @@ def recover_string_slices_from_code(bv: BinaryView) -> Optional[List[RustStringS
                                     f"Candidate string: {candidate_string_slice_data[:candidate_string_slice_length]}"
                                 )
 
+                                bv.define_user_data_var(
+                                    addr=data_var.address,
+                                    var_type=Type.array(type=Type.char(), count=candidate_string_slice_length),
+                                )
+                                logger.log_info(
+                                    f"Defined string: {candidate_string_slice_data[:candidate_string_slice_length]}"
+                                )
+
 
 def action_recover_string_slices_from_code(bv: BinaryView):
     RustStringSlice.create_binary_ninja_type(bv)
