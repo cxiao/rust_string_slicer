@@ -50,14 +50,20 @@ class RustStringSlice:
         bv.define_user_data_var(addr=location, var_type="RustStringSlice", name=name)
         logger.log_info(f"Defined new RustStringSlice at {location:#x}")
 
+
 class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
     def __init__(self, bv: BinaryView):
-        super().__init__(initial_progress_text="Recovering strings from readonly data...", can_cancel=True,)
+        super().__init__(
+            initial_progress_text="Recovering strings from readonly data...",
+            can_cancel=True,
+        )
         self.bv = bv
 
     def run(self):
         if self.bv.arch is None:
-            logger.log_error("Could not get architecture of current binary view, exiting")
+            logger.log_error(
+                "Could not get architecture of current binary view, exiting"
+            )
             return
 
         readonly_segments = list(
@@ -75,11 +81,16 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
         self.bv.begin_undo_actions()
         # Obtain all data vars which are pointers to data in readonly data segments
         data_vars_to_ro_segment_data: List[DataVariable] = []
-        for _data_var_addr, candidate_string_slice_data_ptr in self.bv.data_vars.items():
+        for (
+            _data_var_addr,
+            candidate_string_slice_data_ptr,
+        ) in self.bv.data_vars.items():
             if isinstance(candidate_string_slice_data_ptr.type, PointerType):
                 for readonly_segment in readonly_segments:
                     if candidate_string_slice_data_ptr.value in readonly_segment:
-                        data_vars_to_ro_segment_data.append(candidate_string_slice_data_ptr)
+                        data_vars_to_ro_segment_data.append(
+                            candidate_string_slice_data_ptr
+                        )
                         logger.log_debug(
                             f"Found pointer var at {candidate_string_slice_data_ptr.address:#x} ({candidate_string_slice_data_ptr}) pointing to {candidate_string_slice_data_ptr.value:#x} "
                         )
@@ -95,12 +106,13 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
 
             # Filter out anything at the candidate address
             # that's already defined as any data var type which is not an integer.
-            existing_data_var_at_candidate_string_slice_len_addr = self.bv.get_data_var_at(
-                candidate_string_slice_len_addr
+            existing_data_var_at_candidate_string_slice_len_addr = (
+                self.bv.get_data_var_at(candidate_string_slice_len_addr)
             )
             if existing_data_var_at_candidate_string_slice_len_addr is not None:
                 if not isinstance(
-                    existing_data_var_at_candidate_string_slice_len_addr.type, IntegerType
+                    existing_data_var_at_candidate_string_slice_len_addr.type,
+                    IntegerType,
                 ):
                     continue
 
@@ -159,11 +171,15 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
                     candidate_string_slice_data_ptr.value
                 )
                 if existing_string_slice_data is not None:
-                    self.bv.undefine_user_data_var(addr=candidate_string_slice_data_ptr.value)
+                    self.bv.undefine_user_data_var(
+                        addr=candidate_string_slice_data_ptr.value
+                    )
 
                 self.bv.define_user_data_var(
                     addr=candidate_string_slice_data_ptr.value,
-                    var_type=Type.array(type=Type.char(), count=candidate_string_slice_len),
+                    var_type=Type.array(
+                        type=Type.char(), count=candidate_string_slice_len
+                    ),
                 )
 
                 # Set the RustStringSlice type on the location of the data var.
@@ -181,11 +197,14 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
         self.bv.commit_undo_actions()
         self.bv.update_analysis()
 
+
 class RecoverStringFromCodeTask(BackgroundTaskThread):
     def __init__(self, bv: BinaryView):
-        super().__init__(initial_progress_text="Recovering strings from code...", can_cancel=True,)
+        super().__init__(
+            initial_progress_text="Recovering strings from code...",
+            can_cancel=True,
+        )
         self.bv = bv
-
 
     def run(self):
         # char const data_14003ca50[0x27] = "{size limit reached}SizeLimitExhausted", 0
@@ -212,7 +231,9 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
         # 71 @ 14002c902  (MLIL_NORET noreturn)
 
         if self.bv.arch is None:
-            logger.log_error("Could not get architecture of current binary view, exiting")
+            logger.log_error(
+                "Could not get architecture of current binary view, exiting"
+            )
             return None
 
         readonly_segments = list(
@@ -286,7 +307,10 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
 
                                     self.bv.define_user_data_var(
                                         addr=data_var.address,
-                                        var_type=Type.array(type=Type.char(), count=candidate_string_slice_length),
+                                        var_type=Type.array(
+                                            type=Type.char(),
+                                            count=candidate_string_slice_length,
+                                        ),
                                     )
                                     logger.log_info(
                                         f"Defined string: {candidate_string_slice_data[:candidate_string_slice_length]}"
