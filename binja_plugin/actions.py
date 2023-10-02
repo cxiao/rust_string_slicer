@@ -24,7 +24,7 @@ class RustStringSlice:
     data: bytes
 
     def __repr__(self):
-        return f"StringSlice(address={self.address:#x}, length={self.length:#x}, data={self.data})"
+        return f"StringSlice(address={self.address:#x}, length={self.length:#x}, data={self.data!r})"
 
     @classmethod
     def create_binary_ninja_type(
