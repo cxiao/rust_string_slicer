@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/cxiao/rust_string_slicer/compare/v1.0.0...v1.0.1) (2023-12-24)
+
+
+### Bug Fixes
+
+* Look for string data in both read-only sections and segments ([cbbacb6](https://github.com/cxiao/rust_string_slicer/commit/cbbacb608e1b840617e03854834b37412ecdbddd))
+
 ## 1.0.0 (2023-10-08)
 
 
