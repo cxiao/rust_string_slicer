@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List
 
 from binaryninja.binaryview import BinaryView, DataVariable
-from binaryninja.enums import MediumLevelILOperation
+from binaryninja.enums import MediumLevelILOperation, SectionSemantics
 from binaryninja.log import Logger
 from binaryninja.mediumlevelil import MediumLevelILConst
 from binaryninja.plugin import BackgroundTaskThread
@@ -74,21 +74,37 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
                 self.bv.segments,
             )
         )
-        if len(readonly_segments) == 0:
-            logger.log_error("Could not find any read-only segment in binary, exiting")
+
+        readonly_sections = list(
+            filter(
+                lambda section: section.semantics
+                == SectionSemantics.ReadOnlyDataSectionSemantics,
+                self.bv.sections.values(),
+            )
+        )
+
+        if len(readonly_segments) == 0 and len(readonly_sections) == 0:
+            logger.log_error(
+                "Could not find any read-only segments or sections in binary, exiting"
+            )
             return
 
         self.bv.begin_undo_actions()
-        # Obtain all data vars which are pointers to data in readonly data segments
-        data_vars_to_ro_segment_data: List[DataVariable] = []
+        # Obtain all data vars which are pointers to data in read-only data segments or sections
+        data_vars_to_readonly_data: List[DataVariable] = []
         for (
             _data_var_addr,
             candidate_string_slice_data_ptr,
         ) in self.bv.data_vars.items():
             if isinstance(candidate_string_slice_data_ptr.type, PointerType):
-                for readonly_segment in readonly_segments:
-                    if candidate_string_slice_data_ptr.value in readonly_segment:
-                        data_vars_to_ro_segment_data.append(
+                for readonly_segment_or_section in (
+                    readonly_segments + readonly_sections
+                ):
+                    if (
+                        candidate_string_slice_data_ptr.value
+                        in readonly_segment_or_section
+                    ):
+                        data_vars_to_readonly_data.append(
                             candidate_string_slice_data_ptr
                         )
                         logger.log_debug(
@@ -96,7 +112,7 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
                         )
 
         recovered_string_slices: List[RustStringSlice] = []
-        for candidate_string_slice_data_ptr in data_vars_to_ro_segment_data:
+        for candidate_string_slice_data_ptr in data_vars_to_readonly_data:
             # Try to read an integer following the data var,
             # and treat it as a candidate for a string slice length.
             candidate_string_slice_len_addr = (
