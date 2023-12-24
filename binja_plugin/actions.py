@@ -136,7 +136,7 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
 
             candidate_string_slice_len = self.bv.read_int(
                 address=candidate_string_slice_len_addr,
-                size=self.bv.arch.address_size,  # TODO: is there a better way to get the maximum int size per platform?
+                size=self.bv.arch.address_size,  # In Rust's definition of the `str` type, this length is a `usize`, which is defined to be the same size as the size of pointers for the platform.
                 sign=False,
                 endian=self.bv.arch.endianness,
             )
