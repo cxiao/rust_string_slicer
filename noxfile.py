@@ -7,7 +7,7 @@ def format(session):
     session.run("black", ".")
 
 
-@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11"])
+@nox.session(python=["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"])
 def lint(session):
     session.install("-r", "dev-requirements.txt")
     session.install("-r", "requirements.txt")
