@@ -27,9 +27,11 @@ class RustStringSlice:
         return f"StringSlice(address={self.address:#x}, length={self.length:#x}, data={self.data!r})"
 
     @classmethod
-    def create_binary_ninja_type(
-        cls, bv: BinaryView
-    ):  # TODO: check for existence of type
+    def check_binary_ninja_type_exists(cls, bv: BinaryView) -> bool:
+        return bv.get_type_by_name("RustStringSlice") is not None
+
+    @classmethod
+    def create_binary_ninja_type(cls, bv: BinaryView):
         if bv.arch is not None:
             rust_string_slice_bn_type_obj = StructureBuilder.create(packed=True)
             rust_string_slice_bn_type_obj.append(
@@ -337,10 +339,12 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
 
 
 def action_recover_string_slices_from_code(bv: BinaryView):
-    RustStringSlice.create_binary_ninja_type(bv)
+    if not RustStringSlice.check_binary_ninja_type_exists(bv):
+        RustStringSlice.create_binary_ninja_type(bv)
     RecoverStringFromCodeTask(bv=bv).start()
 
 
 def action_recover_string_slices_from_readonly_data(bv: BinaryView):
-    RustStringSlice.create_binary_ninja_type(bv)
+    if not RustStringSlice.check_binary_ninja_type_exists(bv):
+        RustStringSlice.create_binary_ninja_type(bv)
     RecoverStringFromReadOnlyDataTask(bv=bv).start()
