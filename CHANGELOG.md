@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.2](https://github.com/cxiao/rust_string_slicer/compare/v1.0.1...v1.0.2) (2023-12-25)
+
+
+### Bug Fixes
+
+* Add valid UTF-8 and length filtering when recovering strings from code ([3e4024c](https://github.com/cxiao/rust_string_slicer/commit/3e4024ce91a7850207a8b4555bd32843383d4b16))
+* Check for existence of RustStringSlice type before creating it ([4813149](https://github.com/cxiao/rust_string_slicer/commit/4813149f05c5d9d1152d20c00e4f851278f19c2d))
+* When reecovering strings from code, also look for string data in both read-only sections and segments ([5a278f6](https://github.com/cxiao/rust_string_slicer/commit/5a278f6a1c8ede03fa7c451189c51ded68431881))
+
 ## [1.0.1](https://github.com/cxiao/rust_string_slicer/compare/v1.0.0...v1.0.1) (2023-12-24)
 
 
