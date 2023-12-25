@@ -328,27 +328,59 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
                                 if detailed_operand[0] == "src" and isinstance(
                                     detailed_operand[1], MediumLevelILConst
                                 ):
+                                    candidate_string_slice_data_addr = data_var.address
                                     candidate_string_slice_data = data_var.value
-                                    candidate_string_slice_length = detailed_operand[
+                                    candidate_string_slice_len = detailed_operand[
                                         1
                                     ].value.value
-                                    logger.log_info(
-                                        f"Reference to data var at {data_var.address:#x} with value {candidate_string_slice_data} is followed by store of integer with value {candidate_string_slice_length}"
-                                    )
-                                    logger.log_info(
-                                        f"Candidate string: {candidate_string_slice_data[:candidate_string_slice_length]}"
+                                    logger.log_debug(
+                                        f"Reference to candidate string in code at {code_ref.address:#x} with data at {candidate_string_slice_data_addr:#x} with value {candidate_string_slice_data} is followed by store of integer with value {candidate_string_slice_len}"
                                     )
 
-                                    self.bv.define_user_data_var(
-                                        addr=data_var.address,
-                                        var_type=Type.array(
-                                            type=Type.char(),
-                                            count=candidate_string_slice_length,
-                                        ),
-                                    )
-                                    logger.log_info(
-                                        f"Defined string: {candidate_string_slice_data[:candidate_string_slice_length]}"
-                                    )
+                                    # Filter out any potential string slice which has length 0
+                                    if candidate_string_slice_len == 0:
+                                        continue
+                                    # Filter out any potential string slice which is too long
+                                    if (
+                                        candidate_string_slice_len >= 0x1000
+                                    ):  # TODO: maybe change this limit
+                                        continue
+
+                                    # Attempt to read out the pointed to value as a string slice, with the length obtained above.
+                                    try:
+                                        candidate_string_slice = self.bv.read(
+                                            addr=candidate_string_slice_data_addr,
+                                            length=candidate_string_slice_len,
+                                        )
+                                    except Exception as err:
+                                        logger.log_error(
+                                            f"Failed to read from address {candidate_string_slice_data_addr} with length {candidate_string_slice_len}: {err}"
+                                        )
+                                        continue
+
+                                    # Sanity check whether the recovered string is valid UTF-8
+                                    try:
+                                        candidate_utf8_string = (
+                                            candidate_string_slice.decode("utf-8")
+                                        )
+
+                                        logger.log_info(
+                                            f'Recovered string referenced in code at {code_ref.address:#x}, with data at addr {candidate_string_slice_data_addr:#x}, len {candidate_string_slice_len}: "{candidate_utf8_string}"'
+                                        )
+
+                                        self.bv.define_user_data_var(
+                                            addr=data_var.address,
+                                            var_type=Type.array(
+                                                type=Type.char(),
+                                                count=candidate_string_slice_len,
+                                            ),
+                                        )
+
+                                    except UnicodeDecodeError as err:
+                                        logger.log_warn(
+                                            f"Candidate string slice {candidate_string_slice} does not decode to a valid UTF-8 string; excluding from final results: {err}"
+                                        )
+                                        continue
 
         self.bv.commit_undo_actions()
         self.bv.update_analysis()
