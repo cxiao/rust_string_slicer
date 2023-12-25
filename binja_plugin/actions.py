@@ -305,7 +305,7 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
             code_refs = self.bv.get_code_refs(data_var.address)
             for code_ref in code_refs:
                 if code_ref.mlil is not None:
-                    logger.log_info(f"{code_ref.address:#x}: {code_ref.mlil.instr}")
+                    logger.log_debug(f"{code_ref.address:#x}: {code_ref.mlil.instr}")
 
                     # Obtain more information about the instruction at the cross reference.
                     # Is the pointer being read, or written to?
@@ -321,7 +321,7 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
                             lambda instr: instr.instr_index > code_ref.mlil.instr_index,
                             code_ref.mlil.il_basic_block,
                         ):
-                            logger.log_info(
+                            logger.log_debug(
                                 f"instruction: {instruction.instr_index}, {instruction}"
                             )
                             for detailed_operand in instruction.detailed_operands:
