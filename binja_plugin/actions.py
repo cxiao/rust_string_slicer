@@ -262,9 +262,20 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
                 self.bv.segments,
             )
         )
-        if len(readonly_segments) == 0:
-            logger.log_error("Could not find any read-only segment in binary, exiting")
-            return None
+
+        readonly_sections = list(
+            filter(
+                lambda section: section.semantics
+                == SectionSemantics.ReadOnlyDataSectionSemantics,
+                self.bv.sections.values(),
+            )
+        )
+
+        if len(readonly_segments) == 0 and len(readonly_sections) == 0:
+            logger.log_error(
+                "Could not find any read-only segments or sections in binary, exiting"
+            )
+            return
 
         # TODO: Since the xref from data method is more reliable, we probably want to always do that as the first pass
         # track which ones didn't work after that first pass, and only do the ones that didn't work after the first pass here
@@ -272,12 +283,17 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
         # Obtain all data vars which are themselves already identified char arays, in readonly data segments.
         # TODO: what about non-ascii strings? will binja type them to char arrays in its initial autoanalysis?
         self.bv.begin_undo_actions()
-        char_array_data_vars_in_ro_segment: List[DataVariable] = []
+        char_array_data_vars_in_readonly_data: List[DataVariable] = []
         for _data_var_addr, candidate_string_slice_data in self.bv.data_vars.items():
             if isinstance(candidate_string_slice_data.type, ArrayType):
-                for readonly_segment in readonly_segments:
-                    if candidate_string_slice_data.address in readonly_segment:
-                        char_array_data_vars_in_ro_segment.append(
+                for readonly_segment_or_section in (
+                    readonly_segments + readonly_sections
+                ):
+                    if (
+                        candidate_string_slice_data.address
+                        in readonly_segment_or_section
+                    ):
+                        char_array_data_vars_in_readonly_data.append(
                             candidate_string_slice_data
                         )
                         logger.log_debug(
@@ -285,7 +301,7 @@ class RecoverStringFromCodeTask(BackgroundTaskThread):
                         )
 
         # Find cross-references to those data vars, from code.
-        for data_var in char_array_data_vars_in_ro_segment:
+        for data_var in char_array_data_vars_in_readonly_data:
             code_refs = self.bv.get_code_refs(data_var.address)
             for code_ref in code_refs:
                 if code_ref.mlil is not None:
