@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0](https://github.com/cxiao/rust_string_slicer/compare/v1.0.3...v1.1.0) (2026-01-11)
+
+
+### Features
+
+* Add underscore in front of field names ([24054c6](https://github.com/cxiao/rust_string_slicer/commit/24054c6df0d8861337c88b9b5727a0c233df967c))
+* Minor clarification to progress text ([0e1dfc4](https://github.com/cxiao/rust_string_slicer/commit/0e1dfc4b7b02012652d9098b0dacf281f1252d82))
+* Rename "RustStringSlice" type to "&str" ([a221f91](https://github.com/cxiao/rust_string_slicer/commit/a221f912a36bcf48df4cbb137dd63a318000e6c4))
+
 ## [1.0.3](https://github.com/cxiao/rust_string_slicer/compare/v1.0.2...v1.0.3) (2023-12-25)
 
 
