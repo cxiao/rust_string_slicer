@@ -32,7 +32,7 @@ class RustStringSlice:
 
     @classmethod
     def check_binary_ninja_type_exists(cls, bv: BinaryView) -> bool:
-        return bv.get_type_by_name("RustStringSlice") is not None
+        return bv.get_type_by_name("&str") is not None
 
     @classmethod
     def create_binary_ninja_type(cls, bv: BinaryView):
