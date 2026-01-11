@@ -39,10 +39,10 @@ class RustStringSlice:
         if bv.arch is not None:
             rust_string_slice_bn_type_obj = StructureBuilder.create(packed=True)
             rust_string_slice_bn_type_obj.append(
-                type=PointerType.create(arch=bv.arch, type=Type.char()), name="address"
+                type=PointerType.create(arch=bv.arch, type=Type.char()), name="_address"
             )
             rust_string_slice_bn_type_obj.append(
-                type=IntegerType.create(width=bv.arch.address_size), name="length"
+                type=IntegerType.create(width=bv.arch.address_size), name="_length"
             )
 
             bv.define_user_type(
