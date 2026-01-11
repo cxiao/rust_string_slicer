@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/cxiao/rust_string_slicer/compare/v1.1.0...v1.1.1) (2026-01-11)
+
+
+### Bug Fixes
+
+* Fix broken type existence check after rename of RustStringSlice to &str ([28fec02](https://github.com/cxiao/rust_string_slicer/commit/28fec020f1d27aa44ac264950c61cfa8239713bd))
+
 ## [1.1.0](https://github.com/cxiao/rust_string_slicer/compare/v1.0.3...v1.1.0) (2026-01-11)
 
 
