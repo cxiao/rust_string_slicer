@@ -95,7 +95,7 @@ To test the plugin locally in your own Binary Ninja installation during developm
 - MacOS:
 
     ```sh
-    ln -s --relative . ~/Library/Application\ Support/Binary\ Ninja/plugins/rust_string_slicer
+    ln -s `pwd` ~/Library/Application\ Support/Binary\ Ninja/plugins/rust_string_slicer
     ```
 
 - Linux:
