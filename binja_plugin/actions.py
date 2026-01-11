@@ -19,6 +19,10 @@ logger = Logger(session_id=0, logger_name=__name__)
 
 @dataclass
 class RustStringSlice:
+    """
+    Class to work with the string slice type in Rust, &str
+    """
+
     address: int
     length: int
     data: bytes
@@ -42,15 +46,15 @@ class RustStringSlice:
             )
 
             bv.define_user_type(
-                name="RustStringSlice",
+                name="&str",
                 type_obj=rust_string_slice_bn_type_obj,
             )
-            logger.log_info(f"Defined new RustStringSlice type")
+            logger.log_info(f"Defined new type, `&str`, for Rust string slices")
 
     @classmethod
     def create_binary_ninja_instance(cls, bv: BinaryView, location: int, name: str):
-        bv.define_user_data_var(addr=location, var_type="RustStringSlice", name=name)
-        logger.log_info(f"Defined new RustStringSlice at {location:#x}")
+        bv.define_user_data_var(addr=location, var_type="`&str`", name=name)
+        logger.log_info(f"Defined new `&str` at {location:#x}")
 
 
 class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
