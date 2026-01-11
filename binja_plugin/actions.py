@@ -60,7 +60,7 @@ class RustStringSlice:
 class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
     def __init__(self, bv: BinaryView):
         super().__init__(
-            initial_progress_text="Recovering strings from readonly data...",
+            initial_progress_text="Recovering Rust strings from readonly data...",
             can_cancel=True,
         )
         self.bv = bv
@@ -223,7 +223,7 @@ class RecoverStringFromReadOnlyDataTask(BackgroundTaskThread):
 class RecoverStringFromCodeTask(BackgroundTaskThread):
     def __init__(self, bv: BinaryView):
         super().__init__(
-            initial_progress_text="Recovering strings from code...",
+            initial_progress_text="Recovering Rust strings from code...",
             can_cancel=True,
         )
         self.bv = bv
