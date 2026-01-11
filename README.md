@@ -15,18 +15,13 @@ This plugin provides two new commands:
 
 You can view the list of recovered strings and their addresses in the Log window.
 
-![The Binary Ninja log window, showing the following text logged under the "rust_string_slicer.binja_plugin.actions" category: Candidate string slice b'\xc3\xcc\xcc\xcc\xcc\xcc\xcc\xcc' does not decode to a valid UTF-8 string; excluding from final results: 'utf-8' codec can't decode byte 0xc3 in position 0: invalid continuation byte
-Recovered string at addr 0x18003d174, len 0x28: "library\core\src\unicode\unicode_data.rs"
-Defined new RustStringSlice at 0x18003d2c8
-Recovered string at addr 0x18003d174, len 0x28: "library\core\src\unicode\unicode_data.rs"
-Defined new RustStringSlice at 0x18003d2e0
-Recovered string at addr 0x180037ff4, len 0x2c: "Ll0W8FiHZKeuZFO65DVloBXrq3wo05J9TDdw10yl78k="
-Defined new RustStringSlice at 0x180045010
-Recovered string at addr 0x180038020, len 0x2c: "GONj/LrybW0VQXVpyZRIvZLFPOqUKx5aBVCmW0o4AoY="](images/recovered-strings-log-border.png)
+![The Binary Ninja log window, showing log messages under the "rust_string_slicer.binja_plugin.actions" log category. The messages include both new definitions of the string slice type at certain locations ('Defined new `&str` at 0x1401c6b38" )and the addresses and lengths of the recovered strings themselves ('Recovered string at addr 0x1401c6a09, len 0xb: 'src\main.rs')](images/recovered-strings-log-border.png)
 
-The plugin will also create a new `RustStringSlice` type, for any strings defined in read-only data sections that are made up of a pointer to string data + the length of that string data. You can view all created strings of this type by examining cross-references to the `RustStringSlice` type.
+The plugin will also create a new `&str` type, for any strings defined in read-only data sections that are made up of a pointer to string data + the length of that string data. `&str` is a Rust primitive type called a "string slice", and is the type used in Rust for string literals ([docs](https://doc.rust-lang.org/std/primitive.str.html)).
 
-![The Binary Ninja Types and Cross References window, showing references to the RustStringSlice type, which has fields char* address and int64_t length. Cross references include variables with names like "str_"src\lib.rs"", "str_"C:\Users\Administrator\.cargo\registry"", and "str_"Impossible: must only have 0 to 8 input bytes in last chunk, with no invalid lengths"](images/cross-references-rust-string-slice-type-border.png)
+You can view all created strings of this type by examining cross-references to the `&str` type.
+
+![The Binary Ninja Types and Cross References window, showing references to the &str type, which has fields char* _address and int64_t _length. Cross references include variables with names like str_"C:\Users\User\.cargo\registry\src" and str_"Impossible: must only have 0 to 8 input bytes in last chunk, with no invalid lengths"](images/cross-references-rust-string-slice-type-border.png)
 
 ## How does this work?
 
